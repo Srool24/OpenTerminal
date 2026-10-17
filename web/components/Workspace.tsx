@@ -21,7 +21,9 @@ import CalendarWidget from "./widgets/CalendarWidget";
 import InsiderWidget from "./widgets/InsiderWidget";
 import TvWidget from "./widgets/TvWidget";
 import RecapWidget from "./widgets/RecapWidget";
+import AlertsWidget from "./widgets/AlertsWidget";
 import WidgetErrorBoundary from "./WidgetErrorBoundary";
+import { useT } from "../lib/i18n";
 
 const Grid = WidthProvider(GridLayout);
 
@@ -42,10 +44,12 @@ function WidgetBody({ widget }: { widget: WidgetInstance }) {
     case "insider": return <InsiderWidget widget={widget} />;
     case "tv": return <TvWidget />;
     case "recap": return <RecapWidget />;
+    case "alerts": return <AlertsWidget />;
   }
 }
 
 function SymbolTag({ widget, activeSymbol }: { widget: WidgetInstance; activeSymbol: string }) {
+  const t = useT();
   const setWidgetSymbol = useTerminal((s) => s.setWidgetSymbol);
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState("");
@@ -82,7 +86,7 @@ function SymbolTag({ widget, activeSymbol }: { widget: WidgetInstance; activeSym
   return (
     <span
       className="ml-2 text-[var(--text)] cursor-pointer hover:text-[var(--amber)]"
-      title="Click to set this widget's ticker"
+      title={t("Click to set this widget's ticker")}
       onMouseDown={(e) => e.stopPropagation()}
       onClick={() => setEditing(true)}
     >
@@ -95,10 +99,11 @@ const TITLES: Record<string, string> = {
   quote: "Quote", chart: "Chart", watchlist: "Watchlist", news: "News",
   heatmap: "Heatmap", screener: "Screener", crypto: "Crypto",
   macro: "Macro / Indexes", options: "Option Chain", portfolio: "Portfolio", ai: "AI Assistant",
-  calendar: "Calendar", insider: "Insider Transactions", tv: "Live TV", recap: "Market Recap",
+  calendar: "Calendar", insider: "Insider Transactions", tv: "Live TV", recap: "Market Recap", alerts: "Price Alerts",
 };
 
 export default function Workspace() {
+  const t = useT();
   const widgets = useTerminal((s) => s.widgets);
   const layout = useTerminal((s) => s.layout);
   const setLayout = useTerminal((s) => s.setLayout);
@@ -121,15 +126,15 @@ export default function Workspace() {
       {widgets.map((w) => (
         <div key={w.id}>
           <div className="terminal-panel">
-            <div className="panel-title">
+            <div className="panel-title" dir={t.dir}>
               <span>
-                {TITLES[w.type]}
+                {t(TITLES[w.type])}
                 {symbolAware.has(w.type) && <SymbolTag widget={w} activeSymbol={activeSymbol} />}
               </span>
               <span className="flex gap-2 items-center">
                 {symbolAware.has(w.type) && (
                   <button
-                    title={w.linked ? "Linked to active symbol (click to unlink)" : "Unlinked (click to link)"}
+                    title={w.linked ? t("Linked to active symbol (click to unlink)") : t("Unlinked (click to link)")}
                     onMouseDown={(e) => e.stopPropagation()}
                     onClick={() => toggleLinked(w.id)}
                     className={w.linked ? "text-[var(--amber)]" : "dim"}
@@ -146,8 +151,8 @@ export default function Workspace() {
                 </button>
               </span>
             </div>
-            <div className="flex-1 overflow-auto min-h-0">
-              <WidgetErrorBoundary name={TITLES[w.type]}>
+            <div className="flex-1 overflow-auto min-h-0" dir={t.dir}>
+              <WidgetErrorBoundary name={t(TITLES[w.type])}>
                 <WidgetBody widget={w} />
               </WidgetErrorBoundary>
             </div>

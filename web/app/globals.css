@@ -151,3 +151,10 @@ button.term-btn.active {
 .react-grid-item > .react-resizable-handle::after {
   border-color: var(--amber-dim) !important;
 }
+
+/* In RTL mode, keep signs/percent marks on numbers in logical order while
+   Hebrew text cells still flow right-to-left (first strong character wins). */
+[dir="rtl"] .data-table td,
+[dir="rtl"] .data-table th {
+  unicode-bidi: plaintext;
+}
