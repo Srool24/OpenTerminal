@@ -1,7 +1,7 @@
 import { Router } from "express";
 import Anthropic from "@anthropic-ai/sdk";
 import { tfetch } from "../http.js";
-import { DEFAULT_MODEL, isConfigured, loadAiConfig, saveAiConfig, type AiConfig, type AiProvider } from "../aiConfig.js";
+import { DEFAULT_MODEL, PROVIDERS, isConfigured, loadAiConfig, saveAiConfig, type AiConfig, type AiProvider } from "../aiConfig.js";
 
 export const aiRouter = Router();
 
@@ -19,7 +19,7 @@ async function complete(cfg: AiConfig, messages: Msg[], context: unknown): Promi
   const contextBlock: Msg[] = context
     ? [{ role: "user", content: `Current terminal context (JSON):\n${JSON.stringify(context)}` }]
     : [];
-  if (cfg.provider === "openai") {
+  if (cfg.provider !== "anthropic") {
     const res = await tfetch(
       `${cfg.baseUrl.replace(/\/+$/, "")}/chat/completions`,
       {
@@ -60,7 +60,7 @@ aiRouter.get("/config", (_req, res) => {
 aiRouter.post("/config", (req, res) => {
   const b = req.body ?? {};
   const patch: Partial<AiConfig> = {};
-  if (b.provider === "anthropic" || b.provider === "openai") patch.provider = b.provider as AiProvider;
+  if (PROVIDERS.includes(b.provider)) patch.provider = b.provider as AiProvider;
   if (typeof b.apiKey === "string" && b.apiKey.trim()) patch.apiKey = b.apiKey.trim();
   if (typeof b.model === "string") patch.model = b.model.trim() || (DEFAULT_MODEL[patch.provider ?? loadAiConfig().provider]);
   if (typeof b.baseUrl === "string" && b.baseUrl.trim()) {

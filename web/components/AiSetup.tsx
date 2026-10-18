@@ -5,15 +5,27 @@ import { useEffect, useState } from "react";
 import { apiGet, apiPost } from "../lib/api";
 import { useT } from "../lib/i18n";
 
-type AiStatus = { provider: "anthropic" | "openai"; model: string; baseUrl: string; hasKey: boolean; configured: boolean };
+type Provider = "anthropic" | "openai" | "openrouter" | "nvidia";
+type AiStatus = { provider: Provider; model: string; baseUrl: string; hasKey: boolean; configured: boolean };
 
-const MODEL_HINT = { anthropic: "claude-opus-4-8", openai: "gpt-4o" };
+const MODEL_HINT: Record<Provider, string> = {
+  anthropic: "claude-opus-4-8",
+  openai: "gpt-4o",
+  openrouter: "openai/gpt-4o",
+  nvidia: "meta/llama-3.3-70b-instruct",
+};
+const PROVIDER_BUTTONS: Array<[Provider, string]> = [
+  ["anthropic", "Anthropic (Claude)"],
+  ["openrouter", "OpenRouter"],
+  ["nvidia", "NVIDIA"],
+  ["openai", "OpenAI / compatible"],
+];
 
 export default function AiSetup() {
   const t = useT();
   const qc = useQueryClient();
   const { data: status } = useQuery({ queryKey: ["ai-config"], queryFn: () => apiGet<AiStatus>("/api/ai/config") });
-  const [provider, setProvider] = useState<"anthropic" | "openai">("anthropic");
+  const [provider, setProvider] = useState<Provider>("anthropic");
   const [apiKey, setApiKey] = useState("");
   const [model, setModel] = useState("");
   const [baseUrl, setBaseUrl] = useState("");
@@ -40,14 +52,19 @@ export default function AiSetup() {
       <div className={status?.configured ? "up" : "dim"}>
         {status?.configured ? "● " + t("AI connected") + ` — ${status.model}` : "○ " + t("AI not connected")}
       </div>
-      <div className="flex gap-1">
-        <button className={`term-btn ${provider === "anthropic" ? "active" : ""}`} onClick={() => { setProvider("anthropic"); setModel(MODEL_HINT.anthropic); }}>
-          Anthropic (Claude)
-        </button>
-        <button className={`term-btn ${provider === "openai" ? "active" : ""}`} onClick={() => { setProvider("openai"); setModel(MODEL_HINT.openai); }}>
-          OpenAI / {t("compatible")}
-        </button>
+      <div className="flex gap-1 flex-wrap">
+        {PROVIDER_BUTTONS.map(([p, label]) => (
+          <button
+            key={p}
+            className={`term-btn ${provider === p ? "active" : ""}`}
+            onClick={() => { setProvider(p); setModel(status?.provider === p ? status.model : MODEL_HINT[p]); }}
+          >
+            {label}
+          </button>
+        ))}
       </div>
+      {provider === "openrouter" && <div className="dim text-[10px]">{t("Get a key at openrouter.ai/keys. Model format: vendor/model, e.g. anthropic/claude-sonnet-4.5")}</div>}
+      {provider === "nvidia" && <div className="dim text-[10px]">{t("Get a key at build.nvidia.com. Model format: vendor/model, e.g. meta/llama-3.3-70b-instruct")}</div>}
       {provider === "openai" && (
         <>
           <input dir="ltr" className="w-full" placeholder="https://api.openai.com/v1" value={baseUrl} onChange={(e) => setBaseUrl(e.target.value)} />

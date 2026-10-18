@@ -1,6 +1,8 @@
 // Hebrew translations, keyed by the exact English UI string.
 export const HE: Record<string, string> = {
   // shell
+  "Get a key at openrouter.ai/keys. Model format: vendor/model, e.g. anthropic/claude-sonnet-4.5": "קבל מפתח ב-openrouter.ai/keys. פורמט מודל: ספק/מודל, למשל anthropic/claude-sonnet-4.5",
+  "Get a key at build.nvidia.com. Model format: vendor/model, e.g. meta/llama-3.3-70b-instruct": "קבל מפתח ב-build.nvidia.com. פורמט מודל: ספק/מודל, למשל meta/llama-3.3-70b-instruct",
   "AI models": "מודלי AI", "Telegram": "טלגרם", "AI connected": "AI מחובר", "AI not connected": "AI לא מחובר",
   "compatible": "תואם", "Model": "מודל", "API key": "מפתח API", "Key saved (paste a new one to replace)": "המפתח נשמר (הדבק חדש כדי להחליף)",
   "Save": "שמור", "Test connection": "בדוק חיבור", "Saved.": "נשמר.", "Connection works.": "החיבור עובד.",
