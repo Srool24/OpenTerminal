@@ -1,11 +1,11 @@
 "use client";
 
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQueries, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useState } from "react";
-import { apiGet, apiPost, fmt, type Quote } from "../../lib/api";
+import { apiGet, apiPost, fmt, type Candle, type Quote } from "../../lib/api";
 import { useT } from "../../lib/i18n";
 import { normalizeSymbol, symbolsParam } from "../../lib/symbol";
-import { isTriggered, useAlerts } from "../../store/alerts";
+import { emaCrossed, emaSide, isEmaOp, isTriggered, useAlerts, type AlertInterval, type AlertOp, type PriceAlert } from "../../store/alerts";
 import { useTerminal } from "../../store/terminal";
 
 type TgStatus = { configured: boolean; linked: boolean };
@@ -64,6 +64,14 @@ export function TelegramSetup() {
   );
 }
 
+const IV_LABEL: Record<AlertInterval, string> = { "1h": "1H", "4h": "4H", "1d": "D" };
+
+/** "EMA9 ↗ EMA20 (D)"; for "either" alerts pass the side that just fired to show the direction. */
+function emaLabel(a: PriceAlert, side?: 1 | -1): string {
+  const dir = a.op === "ema-up" ? "↗" : a.op === "ema-down" ? "↘" : side === 1 ? "↗" : side === -1 ? "↘" : "⇄";
+  return `EMA9 ${dir} EMA20 (${IV_LABEL[a.interval ?? "1d"]})`;
+}
+
 // Alerts are evaluated here, so they only fire while this widget is open.
 export default function AlertsWidget() {
   const t = useT();
@@ -71,9 +79,10 @@ export default function AlertsWidget() {
   const [viaTelegram, setViaTelegram] = useState(false);
   const { data: tgStatus } = useQuery({ queryKey: ["tg-status"], queryFn: () => apiGet<TgStatus>("/api/telegram/status") });
   const activeSymbol = useTerminal((s) => s.activeSymbol);
-  const { alerts, addAlert, removeAlert, markTriggered, rearm } = useAlerts();
+  const { alerts, addAlert, removeAlert, markTriggered, rearm, setEmaSide } = useAlerts();
   const [symbol, setSymbol] = useState("");
-  const [op, setOp] = useState<">=" | "<=">(">=");
+  const [op, setOp] = useState<AlertOp>(">=");
+  const [interval, setInterval_] = useState<AlertInterval>("1d");
   const [price, setPrice] = useState("");
   const [invalid, setInvalid] = useState(false);
   const [permission, setPermission] = useState<string>("default");
@@ -94,8 +103,9 @@ export default function AlertsWidget() {
 
   useEffect(() => {
     for (const a of armed) {
+      if (isEmaOp(a.op)) continue;
       const last = quotes.find((q) => q.symbol === a.symbol)?.price;
-      if (last == null || !isTriggered(a.op, a.price, last)) continue;
+      if (last == null || !isTriggered(a.op as ">=" | "<=", a.price, last)) continue;
       markTriggered(a.id, last);
       if (a.telegram) {
         apiPost("/api/telegram/send", {
@@ -110,14 +120,52 @@ export default function AlertsWidget() {
     }
   }, [quotes]); // eslint-disable-line react-hooks/exhaustive-deps
 
+  // EMA9/EMA20 crossover alerts: poll candles per (symbol, interval) and compare
+  // which side EMA9 is on with the side seen at the previous check. The first
+  // check only records the side, so arming an alert never fires immediately.
+  const emaAlerts = armed.filter((a) => isEmaOp(a.op));
+  const emaKeys = [...new Set(emaAlerts.map((a) => `${a.symbol}|${a.interval ?? "1d"}`))];
+  const emaCandles = useQueries({
+    queries: emaKeys.map((k) => {
+      const [sym, iv] = k.split("|");
+      return {
+        queryKey: ["ema-cross", sym, iv],
+        queryFn: () => apiGet<Candle[]>(`/api/history/${encodeURIComponent(sym)}?range=${iv === "1d" ? "1Y" : "1M"}&interval=${iv}`),
+        refetchInterval: 60_000,
+      };
+    }),
+  });
+  const emaStamp = emaCandles.map((q) => q.dataUpdatedAt).join(",");
+  useEffect(() => {
+    emaAlerts.forEach((a) => {
+      const idx = emaKeys.indexOf(`${a.symbol}|${a.interval ?? "1d"}`);
+      const candles = emaCandles[idx]?.data;
+      if (!candles) return;
+      const side = emaSide(candles);
+      if (!side) return;
+      if (emaCrossed(a.op, a.emaSide, side)) {
+        const last = candles.at(-1)?.close ?? 0;
+        markTriggered(a.id, last);
+        const label = emaLabel(a, side);
+        if (a.telegram) apiPost("/api/telegram/send", { text: `🔔 ${a.symbol} ${label} — ${fmt(last)}` }).catch(() => {});
+        if (typeof Notification !== "undefined" && Notification.permission === "granted") {
+          new Notification(`${a.symbol} ${label}`, { body: `${a.symbol}: ${fmt(last)}` });
+        }
+      } else if (a.emaSide !== side) {
+        setEmaSide(a.id, side);
+      }
+    });
+  }, [emaStamp]); // eslint-disable-line react-hooks/exhaustive-deps
+
   const submit = () => {
     const sym = normalizeSymbol(symbol || activeSymbol);
-    const target = Number(price);
-    if (!sym || !isFinite(target) || target <= 0) {
+    const ema = isEmaOp(op);
+    const target = ema ? 0 : Number(price);
+    if (!sym || (!ema && (!isFinite(target) || target <= 0))) {
       setInvalid(true);
       return;
     }
-    addAlert(sym, op, target, viaTelegram && !!tgStatus?.linked);
+    addAlert(sym, op, target, viaTelegram && !!tgStatus?.linked, ema ? interval : undefined);
     setPrice("");
     setInvalid(false);
     if (typeof Notification !== "undefined" && Notification.permission === "default") {
@@ -140,19 +188,30 @@ export default function AlertsWidget() {
           value={symbol}
           onChange={(e) => setSymbol(e.target.value.toUpperCase())}
         />
-        <select value={op} onChange={(e) => setOp(e.target.value as ">=" | "<=")}>
+        <select value={op} onChange={(e) => setOp(e.target.value as AlertOp)}>
           <option value=">=">{t("Above")} ≥</option>
           <option value="<=">{t("Below")} ≤</option>
+          <option value="ema-up">EMA9 ↗ EMA20 ({t("crosses above")})</option>
+          <option value="ema-down">EMA9 ↘ EMA20 ({t("crosses below")})</option>
+          <option value="ema-any">EMA9 ⇄ EMA20 ({t("either cross")})</option>
         </select>
-        <input
-          className={`w-24 ${invalid ? "!border-[var(--down)]" : ""}`}
-          placeholder={t("Price")}
-          value={price}
-          onChange={(e) => {
-            setPrice(e.target.value);
-            setInvalid(false);
-          }}
-        />
+        {isEmaOp(op) ? (
+          <select value={interval} onChange={(e) => setInterval_(e.target.value as AlertInterval)} title={t("Candle size")}>
+            <option value="1h">1H</option>
+            <option value="4h">4H</option>
+            <option value="1d">D</option>
+          </select>
+        ) : (
+          <input
+            className={`w-24 ${invalid ? "!border-[var(--down)]" : ""}`}
+            placeholder={t("Price")}
+            value={price}
+            onChange={(e) => {
+              setPrice(e.target.value);
+              setInvalid(false);
+            }}
+          />
+        )}
         <label className="flex items-center gap-1 dim" title={tgStatus?.linked ? undefined : t("Connect Telegram first")}>
           <input
             type="checkbox"
@@ -179,8 +238,8 @@ export default function AlertsWidget() {
             return (
               <tr key={a.id}>
                 <td className="font-bold">{a.symbol}{a.telegram ? " ✈" : ""}</td>
-                <td>{a.op === ">=" ? "≥" : "≤"} {fmt(a.price)}</td>
-                <td>{fmt(last)}</td>
+                <td>{isEmaOp(a.op) ? emaLabel(a) : `${a.op === ">=" ? "≥" : "≤"} ${fmt(a.price)}`}</td>
+                <td>{fmt(isEmaOp(a.op) ? emaCandles[emaKeys.indexOf(`${a.symbol}|${a.interval ?? "1d"}`)]?.data?.at(-1)?.close : last)}</td>
                 <td className={a.triggeredAt ? "up" : "dim"}>
                   {a.triggeredAt ? (
                     <button className="underline" title={t("Re-arm")} onClick={() => rearm(a.id)}>
