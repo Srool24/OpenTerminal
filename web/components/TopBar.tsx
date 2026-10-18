@@ -5,6 +5,7 @@ import { useEffect, useState } from "react";
 import { apiGet } from "../lib/api";
 import { useTerminal } from "../store/terminal";
 import { useLang, useT } from "../lib/i18n";
+import SettingsDialog from "./SettingsDialog";
 
 type Status = {
   ok: boolean;
@@ -41,6 +42,7 @@ function marketStateNY(): { open: boolean } {
 export default function TopBar() {
   const t = useT();
   const setLang = useLang((s) => s.setLang);
+  const [settingsOpen, setSettingsOpen] = useState(false);
   const setCommandOpen = useTerminal((s) => s.setCommandOpen);
   const activeSymbol = useTerminal((s) => s.activeSymbol);
   const { data: status } = useQuery({
@@ -80,6 +82,10 @@ export default function TopBar() {
       >
         {t.lang === "he" ? "EN" : "עב"}
       </button>
+      <button className="term-btn" title={t("Advanced settings")} onClick={() => setSettingsOpen(true)}>
+        ⚙
+      </button>
+      {settingsOpen && <SettingsDialog onClose={() => setSettingsOpen(false)} />}
     </header>
   );
 }

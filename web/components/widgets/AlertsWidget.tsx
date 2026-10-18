@@ -10,7 +10,7 @@ import { useTerminal } from "../../store/terminal";
 
 type TgStatus = { configured: boolean; linked: boolean };
 
-function TelegramSetup() {
+export function TelegramSetup() {
   const t = useT();
   const qc = useQueryClient();
   const [token, setToken] = useState("");

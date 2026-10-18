@@ -20,7 +20,8 @@ export type WidgetType =
   | "insider"
   | "tv"
   | "recap"
-  | "alerts";
+  | "alerts"
+  | "feargreed";
 
 export type WidgetInstance = {
   id: string;
@@ -82,6 +83,7 @@ const SIZE_BY_TYPE: Record<WidgetType, { w: number; h: number }> = {
   tv: { w: 6, h: 11 },
   recap: { w: 5, h: 12 },
   alerts: { w: 5, h: 8 },
+  feargreed: { w: 4, h: 11 },
 };
 
 export const useTerminal = create<TerminalState>()(

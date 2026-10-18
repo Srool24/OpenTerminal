@@ -22,6 +22,7 @@ import InsiderWidget from "./widgets/InsiderWidget";
 import TvWidget from "./widgets/TvWidget";
 import RecapWidget from "./widgets/RecapWidget";
 import AlertsWidget from "./widgets/AlertsWidget";
+import FearGreedWidget from "./widgets/FearGreedWidget";
 import WidgetErrorBoundary from "./WidgetErrorBoundary";
 import { useT } from "../lib/i18n";
 
@@ -45,6 +46,7 @@ function WidgetBody({ widget }: { widget: WidgetInstance }) {
     case "tv": return <TvWidget />;
     case "recap": return <RecapWidget />;
     case "alerts": return <AlertsWidget />;
+    case "feargreed": return <FearGreedWidget />;
   }
 }
 
@@ -99,7 +101,7 @@ const TITLES: Record<string, string> = {
   quote: "Quote", chart: "Chart", watchlist: "Watchlist", news: "News",
   heatmap: "Heatmap", screener: "Screener", crypto: "Crypto",
   macro: "Macro / Indexes", options: "Option Chain", portfolio: "Portfolio", ai: "AI Assistant",
-  calendar: "Calendar", insider: "Insider Transactions", tv: "Live TV", recap: "Market Recap", alerts: "Price Alerts",
+  calendar: "Calendar", insider: "Insider Transactions", tv: "Live TV", recap: "Market Recap", alerts: "Price Alerts", feargreed: "Fear & Greed Index",
 };
 
 export default function Workspace() {

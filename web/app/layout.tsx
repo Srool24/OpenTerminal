@@ -10,11 +10,12 @@ const heebo = Heebo({ subsets: ["hebrew", "latin"], variable: "--font-he", displ
 export const metadata: Metadata = {
   title: "OpenTerminal",
   description: "Bloomberg-style financial terminal on free data sources",
+  other: { google: "notranslate" },
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en" className={heebo.variable}>
+    <html lang="en" translate="no" className={heebo.variable}>
       <body>
         <Providers>{children}</Providers>
       </body>

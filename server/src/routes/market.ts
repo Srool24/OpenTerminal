@@ -13,6 +13,7 @@ import * as news from "../providers/news.js";
 import * as econcalendar from "../providers/econcalendar.js";
 import * as finra from "../providers/finra.js";
 import * as secedgar from "../providers/secedgar.js";
+import * as feargreed from "../providers/feargreed.js";
 import { aggregate, parseInterval, type Interval } from "../candles.js";
 
 export const marketRouter = Router();
@@ -595,6 +596,15 @@ marketRouter.get("/macro", async (req, res) => {
 
     if (yields.length === 0 && indexes.length === 0) throw new Error("no macro data from any provider");
     res.json({ yields, vix: vix?.value ?? null, indexes, policyRate: null, inflation: null });
+  } catch (err) {
+    fail(req, res, err);
+  }
+});
+
+// ---- fear & greed index (CNN) ----
+marketRouter.get("/feargreed", async (req, res) => {
+  try {
+    res.json(await cached("feargreed", 60_000, () => feargreed.fetchFearGreed()));
   } catch (err) {
     fail(req, res, err);
   }

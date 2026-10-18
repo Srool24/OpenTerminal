@@ -1,6 +1,19 @@
 // Hebrew translations, keyed by the exact English UI string.
 export const HE: Record<string, string> = {
   // shell
+  "AI models": "מודלי AI", "Telegram": "טלגרם", "AI connected": "AI מחובר", "AI not connected": "AI לא מחובר",
+  "compatible": "תואם", "Model": "מודל", "API key": "מפתח API", "Key saved (paste a new one to replace)": "המפתח נשמר (הדבק חדש כדי להחליף)",
+  "Save": "שמור", "Test connection": "בדוק חיבור", "Saved.": "נשמר.", "Connection works.": "החיבור עובד.",
+  "Works with OpenAI, OpenRouter, Ollama, LM Studio and any OpenAI-compatible server.": "עובד עם OpenAI, OpenRouter, Ollama, LM Studio וכל שרת תואם OpenAI.",
+  "Advanced settings": "הגדרות מתקדמות", "Language": "שפה", "Widget layout": "פריסת ווידג'טים",
+  "Saved data in this browser": "נתונים שמורים בדפדפן", "Clear all": "נקה הכול",
+  "Delete all saved layout, watchlist, alerts and drawings from this browser?": "למחוק מהדפדפן את כל הפריסה, רשימת המעקב, ההתראות והשרטוטים השמורים?",
+  "FEAR INDEX": "מדד הפחד",
+  "Fear & Greed Index": "מדד הפחד והחמדנות",
+  "Loading fear & greed index…": "טוען את מדד הפחד והחמדנות…",
+  "Source: CNN Fear & Greed Index": "מקור: מדד הפחד והחמדנות של CNN",
+  "Extreme Fear": "פחד קיצוני", "Fear": "פחד", "Neutral": "ניטרלי", "Greed": "חמדנות", "Extreme Greed": "חמדנות קיצונית",
+  "Previous close": "סגירה קודמת", "1 week ago": "לפני שבוע", "1 month ago": "לפני חודש", "1 year ago": "לפני שנה",
   "Add widget": "הוסף ווידג'ט",
   "RESET LAYOUT": "אפס פריסה",
   "CHART": "גרף",
@@ -126,7 +139,7 @@ export const HE: Record<string, string> = {
   "Compare…": "השוואה…", "Overlay another symbol, rebased to this chart's start (Enter)": "הצג סימול נוסף על הגרף, מנורמל לתחילת הגרף (Enter)",
   "Remove comparison": "הסר השוואה",
   "Trend line": "קו מגמה", "Horizontal line": "קו אופקי", "Vertical line": "קו אנכי", "Rectangle": "מלבן",
-  "Fibonacci retracement": "פיבונאצ'י", "Drawing color": "צבע שרטוט", "Delete": "מחק", "Clear": "נקה", "Clear all drawings": "נקה את כל השרטוטים",
+  "Fibonacci retracement": "פיבונאצ'י", "Drawing color": "צבע שרטוט", "Change selected drawing color": "שנה צבע שרטוט נבחר", "Delete": "מחק", "Clear": "נקה", "Clear all drawings": "נקה את כל השרטוטים",
   "Telegram alerts are connected.": "התראות הטלגרם מחוברות.", "Telegram connected": "טלגרם מחובר",
   "Bot saved — send it /start, then press Connect": "הבוט נשמר — שלח לו /start ואז לחץ התחבר",
   "Telegram not connected": "טלגרם לא מחובר",

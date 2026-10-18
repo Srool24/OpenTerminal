@@ -30,6 +30,9 @@ export default function DrawingLayer({ chart, series, candles, symbol, tool, col
   const [hover, setHover] = useState<DrawingPoint | null>(null);
   const [, setFrame] = useState(0);
   const svgRef = useRef<SVGSVGElement>(null);
+  // Active edit gesture: drag one handle ("point"), or the whole shape ("move").
+  const dragRef = useRef<{ id: string; idx: number | null; start: DrawingPoint; orig: DrawingPoint[]; sx: number; sy: number; moved: boolean } | null>(null);
+  const justDragged = useRef(false);
 
   // Re-render when the chart's view changes. lightweight-charts has no event for
   // vertical (price) scaling, so poll a cheap signature once per frame.
@@ -71,12 +74,46 @@ export default function DrawingLayer({ chart, series, candles, symbol, tool, col
 
   const toX = (time: number) => chart.timeScale().logicalToCoordinate(timeToLogical(candles, time) as Logical);
   const toY = (price: number) => series.priceToCoordinate(price);
-  const toPoint = (e: React.MouseEvent): DrawingPoint | null => {
+  const toPoint = (e: { clientX: number; clientY: number }): DrawingPoint | null => {
     const box = svgRef.current!.getBoundingClientRect();
     const logical = chart.timeScale().coordinateToLogical(e.clientX - box.left);
     const price = series.coordinateToPrice(e.clientY - box.top);
     if (logical === null || price === null) return null;
     return { time: Math.round(logicalToTime(candles, logical)), price };
+  };
+
+  const startDrag = (e: React.MouseEvent, id: string, idx: number | null) => {
+    if (tool || e.button !== 0) return;
+    const d = drawings.find((x) => x.id === id);
+    const start = toPoint(e);
+    if (!d || !start) return;
+    e.stopPropagation();
+    e.preventDefault();
+    dragRef.current = { id, idx, start, orig: d.points, sx: e.clientX, sy: e.clientY, moved: false };
+    const onMove = (ev: MouseEvent) => {
+      const g = dragRef.current;
+      if (!g) return;
+      if (!g.moved && Math.hypot(ev.clientX - g.sx, ev.clientY - g.sy) < 3) return;
+      g.moved = true;
+      const cur = toPoint(ev);
+      if (!cur) return;
+      const dt = cur.time - g.start.time;
+      const dp = cur.price - g.start.price;
+      const points =
+        g.idx === null
+          ? g.orig.map((p) => ({ time: Math.round(p.time + dt), price: p.price + dp }))
+          : g.orig.map((p, i) => (i === g.idx ? { time: cur.time, price: cur.price } : p));
+      useDrawings.getState().update(symbol, g.id, { points });
+    };
+    const onUp = () => {
+      justDragged.current = !!dragRef.current?.moved;
+      dragRef.current = null;
+      window.removeEventListener("mousemove", onMove);
+      window.removeEventListener("mouseup", onUp);
+      setTimeout(() => (justDragged.current = false), 0);
+    };
+    window.addEventListener("mousemove", onMove);
+    window.addEventListener("mouseup", onUp);
   };
 
   const click = (e: React.MouseEvent) => {
@@ -107,21 +144,48 @@ export default function DrawingLayer({ chart, series, candles, symbol, tool, col
       style: { pointerEvents: preview || tool ? ("none" as const) : ("stroke" as const), cursor: "pointer" },
       onClick: (ev: React.MouseEvent) => {
         ev.stopPropagation();
-        if (id) onSelect(id === selected ? null : id);
+        if (id && !justDragged.current) onSelect(id === selected ? null : id);
+      },
+      onMouseDown: (ev: React.MouseEvent) => {
+        if (id && isSel) startDrag(ev, id, null);
       },
     };
+    // Invisible fat stroke so thin lines are easy to grab.
+    const hit = (k: string, x1: number, y1: number, x2: number, y2: number) =>
+      id ? (
+        <line
+          key={k}
+          x1={x1} y1={y1} x2={x2} y2={y2}
+          stroke="transparent"
+          strokeWidth={14}
+          style={{ pointerEvents: tool ? "none" : "stroke", cursor: isSel ? "move" : "pointer" }}
+          onClick={common.onClick}
+          onMouseDown={common.onMouseDown}
+        />
+      ) : null;
     switch (d.kind) {
       case "trend":
-        return b ? <line key={key} x1={a.x} y1={a.y} x2={b.x} y2={b.y} {...common} /> : null;
+        return b ? (
+          <g key={key}>
+            <line x1={a.x} y1={a.y} x2={b.x} y2={b.y} {...common} />
+            {hit("hit", a.x, a.y, b.x, b.y)}
+          </g>
+        ) : null;
       case "hline":
         return (
           <g key={key}>
             <line x1={0} y1={a.y} x2={width} y2={a.y} {...common} />
+            {hit("hit", 0, a.y, width, a.y)}
             <text x={width - 4} y={a.y - 3} textAnchor="end" fill={d.color} fontSize={10}>{fmt(a.price)}</text>
           </g>
         );
       case "vline":
-        return <line key={key} x1={a.x} y1={0} x2={a.x} y2={height} {...common} />;
+        return (
+          <g key={key}>
+            <line x1={a.x} y1={0} x2={a.x} y2={height} {...common} />
+            {hit("hit", a.x, 0, a.x, height)}
+          </g>
+        );
       case "rect":
         return b ? (
           <rect
@@ -149,7 +213,8 @@ export default function DrawingLayer({ chart, series, candles, symbol, tool, col
               return (
                 <g key={lvl}>
                   <line x1={left} y1={y} x2={right} y2={y} {...common} strokeWidth={lvl === 0 || lvl === 1 ? common.strokeWidth : 1} strokeOpacity={0.8} />
-                  <text x={right + 3} y={y + 3} fill={d.color} fontSize={9}>{lvl} · {fmt(price)}</text>
+                  {hit(`hit${lvl}`, left, y, right, y)}
+                  <text x={right + 3} y={y + 3} fill={d.color} fontSize={9} style={{ pointerEvents: "none" }}>{lvl} · {fmt(price)}</text>
                 </g>
               );
             })}
@@ -175,6 +240,27 @@ export default function DrawingLayer({ chart, series, candles, symbol, tool, col
       onMouseLeave={() => setHover(null)}
     >
       {drawings.map((d) => render(d, d.id, d.id))}
+      {!tool && drawings.filter((d) => d.id === selected).flatMap((d) =>
+        d.points.map((pt, i) => {
+          const x = toX(pt.time);
+          const y = toY(pt.price);
+          if (x === null || y === null) return null;
+          return (
+            <circle
+              key={`${d.id}-h${i}`}
+              cx={x}
+              cy={y}
+              r={5}
+              fill="#000"
+              stroke={d.color}
+              strokeWidth={2}
+              style={{ pointerEvents: "auto", cursor: "grab" }}
+              onMouseDown={(e) => startDrag(e, d.id, i)}
+              onClick={(e) => e.stopPropagation()}
+            />
+          );
+        })
+      )}
       {previewDrawing}
       {hoverGuide}
     </svg>

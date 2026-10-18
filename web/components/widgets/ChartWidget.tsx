@@ -340,9 +340,12 @@ export default function ChartWidget({ widget }: { widget: WidgetInstance }) {
         ))}
         <input
           type="color"
-          title={t("Drawing color")}
+          title={selectedDrawing ? t("Change selected drawing color") : t("Drawing color")}
           value={drawColor}
-          onChange={(e) => setDrawColor(e.target.value)}
+          onChange={(e) => {
+            setDrawColor(e.target.value);
+            if (selectedDrawing) useDrawings.getState().update(symbol, selectedDrawing, { color: e.target.value });
+          }}
           className="!w-6 !h-5 !p-0 cursor-pointer bg-transparent"
         />
         {selectedDrawing && (

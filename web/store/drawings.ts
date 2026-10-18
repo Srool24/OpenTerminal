@@ -13,6 +13,7 @@ export const POINTS_NEEDED: Record<DrawingKind, number> = { trend: 2, hline: 1, 
 type DrawingsState = {
   bySymbol: Record<string, Drawing[]>;
   add: (symbol: string, kind: DrawingKind, points: DrawingPoint[], color: string) => void;
+  update: (symbol: string, id: string, patch: Partial<Pick<Drawing, "points" | "color">>) => void;
   remove: (symbol: string, id: string) => void;
   clear: (symbol: string) => void;
 };
@@ -29,6 +30,13 @@ export const useDrawings = create<DrawingsState>()(
               ...(st.bySymbol[symbol] ?? []),
               { id: `d-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`, kind, points, color },
             ],
+          },
+        })),
+      update: (symbol, id, patch) =>
+        set((st) => ({
+          bySymbol: {
+            ...st.bySymbol,
+            [symbol]: (st.bySymbol[symbol] ?? []).map((d) => (d.id === id ? { ...d, ...patch } : d)),
           },
         })),
       remove: (symbol, id) =>
