@@ -28,6 +28,34 @@ import { useT } from "../lib/i18n";
 
 const Grid = WidthProvider(GridLayout);
 
+/** Scrollable widget body. Once the widget's own content hits its top/bottom
+ * (or doesn't overflow at all), the wheel scrolls the whole workspace instead of
+ * being swallowed — otherwise a page with many widgets can't be scrolled while the
+ * cursor is over a list. Chart canvases keep the wheel for zooming. */
+function WidgetScroll({ children, dir }: { children: React.ReactNode; dir: "rtl" | "ltr" }) {
+  const ref = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    const onWheel = (e: WheelEvent) => {
+      if (e.ctrlKey || e.target instanceof HTMLCanvasElement) return;
+      const main = el.closest("main");
+      if (!main || Math.abs(e.deltaY) < Math.abs(e.deltaX)) return;
+      const atEnd = e.deltaY > 0 ? el.scrollTop + el.clientHeight >= el.scrollHeight - 1 : el.scrollTop <= 0;
+      if (!atEnd) return;
+      e.preventDefault();
+      main.scrollBy({ top: e.deltaY });
+    };
+    el.addEventListener("wheel", onWheel, { passive: false });
+    return () => el.removeEventListener("wheel", onWheel);
+  }, []);
+  return (
+    <div ref={ref} className="flex-1 overflow-auto min-h-0" dir={dir}>
+      {children}
+    </div>
+  );
+}
+
 function WidgetBody({ widget }: { widget: WidgetInstance }) {
   switch (widget.type) {
     case "quote": return <QuoteWidget widget={widget} />;
@@ -113,6 +141,17 @@ export default function Workspace() {
   const toggleLinked = useTerminal((s) => s.toggleLinked);
   const activeSymbol = useTerminal((s) => s.activeSymbol);
 
+  // A widget added from the sidebar lands at the bottom, usually off-screen:
+  // bring it into view instead of leaving the user to hunt for it.
+  const prevCount = useRef(widgets.length);
+  useEffect(() => {
+    if (widgets.length > prevCount.current) {
+      const main = document.querySelector("main");
+      setTimeout(() => main?.scrollTo({ top: main.scrollHeight, behavior: "smooth" }), 50);
+    }
+    prevCount.current = widgets.length;
+  }, [widgets.length]);
+
   const symbolAware = new Set(["quote", "chart", "news", "options", "insider"]);
 
   return (
@@ -153,11 +192,11 @@ export default function Workspace() {
                 </button>
               </span>
             </div>
-            <div className="flex-1 overflow-auto min-h-0" dir={t.dir}>
+            <WidgetScroll dir={t.dir}>
               <WidgetErrorBoundary name={t(TITLES[w.type])}>
                 <WidgetBody widget={w} />
               </WidgetErrorBoundary>
-            </div>
+            </WidgetScroll>
           </div>
         </div>
       ))}
