@@ -3,6 +3,7 @@ import cors from "cors";
 import { marketRouter } from "./routes/market.js";
 import { portfolioRouter } from "./routes/portfolio.js";
 import { aiRouter } from "./routes/ai.js";
+import { telegramRouter } from "./routes/telegram.js";
 import { allStats } from "./providers/registry.js";
 import { requireApiKey } from "./auth.js";
 import { rateLimit } from "./rateLimit.js";
@@ -37,6 +38,7 @@ app.use(express.json());
 app.use("/api", rateLimit({ windowMs: 60_000, max: 240 }), marketRouter);
 // Portfolio data and the paid AI endpoint require a shared secret; see auth.ts.
 app.use("/api/portfolios", requireApiKey, portfolioRouter);
+app.use("/api/telegram", requireApiKey, rateLimit({ windowMs: 60_000, max: 30 }), telegramRouter);
 app.use(
   "/api/ai",
   requireApiKey,
