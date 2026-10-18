@@ -29,7 +29,7 @@ export default function Sidebar() {
   const resetWorkspace = useTerminal((s) => s.resetWorkspace);
 
   return (
-    <nav dir={t.dir} className="w-32 bg-[var(--panel)] border-r border-[var(--border)] flex flex-col shrink-0">
+    <nav dir={t.dir} className="w-32 bg-[var(--panel)] border-r border-[var(--border)] flex flex-col shrink-0 overflow-y-auto">
       <div className="dim px-2 py-1 text-[10px] uppercase tracking-wider border-b border-[var(--border)]">
         {t("Add widget")}
       </div>

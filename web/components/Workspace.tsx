@@ -38,13 +38,15 @@ function WidgetScroll({ children, dir }: { children: React.ReactNode; dir: "rtl"
     const el = ref.current;
     if (!el) return;
     const onWheel = (e: WheelEvent) => {
-      if (e.ctrlKey || e.target instanceof HTMLCanvasElement) return;
+      if (e.ctrlKey || e.defaultPrevented) return;
       const main = el.closest("main");
       if (!main || Math.abs(e.deltaY) < Math.abs(e.deltaX)) return;
       const atEnd = e.deltaY > 0 ? el.scrollTop + el.clientHeight >= el.scrollHeight - 1 : el.scrollTop <= 0;
       if (!atEnd) return;
       e.preventDefault();
-      main.scrollBy({ top: e.deltaY });
+      // deltaMode 1/2 (Firefox mouse wheel, some drivers) report lines/pages, not pixels.
+      const unit = e.deltaMode === 1 ? 40 : e.deltaMode === 2 ? main.clientHeight : 1;
+      main.scrollBy({ top: e.deltaY * unit, behavior: "instant" });
     };
     el.addEventListener("wheel", onWheel, { passive: false });
     return () => el.removeEventListener("wheel", onWheel);
