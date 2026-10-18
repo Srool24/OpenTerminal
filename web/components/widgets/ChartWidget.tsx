@@ -33,7 +33,7 @@ const DRAW_TOOLS: Array<[DrawingKind, string, string]> = [
   ["fib", "Fib", "Fibonacci retracement"],
 ];
 const CHART_TYPES = ["candles", "bars", "line", "area"] as const;
-const INDICATORS = ["SMA20", "SMA50", "SMA200", "EMA20", "VWAP", "BOLL", "RSI", "MACD"] as const;
+const INDICATORS = ["SMA20", "SMA50", "SMA200", "EMA9", "EMA20", "VWAP", "BOLL", "RSI", "MACD"] as const;
 
 type Range = (typeof RANGES)[number];
 type Interval = (typeof INTERVALS)[number][0];
@@ -44,7 +44,7 @@ const ts = (t: number) => t as UTCTimestamp;
 const toMap = (pts: Point[]) => new Map(pts.map((p) => [p.time, p.value]));
 
 const INDICATOR_COLOR: Record<string, string> = {
-  SMA20: "#ffd966", SMA50: "#4fc3f7", SMA200: "#ba68c8", EMA20: "#ff8a65",
+  SMA20: "#ffd966", SMA50: "#4fc3f7", SMA200: "#ba68c8", EMA9: "#00e5ff", EMA20: "#ff8a65",
   VWAP: "#80cbc4", RSI: "#ff9900", BOLL: "#ff9900", MACD: "#4fc3f7",
 };
 
@@ -117,6 +117,7 @@ export default function ChartWidget({ widget }: { widget: WidgetInstance }) {
       SMA20: active.has("SMA20") ? sma(candles, 20) : null,
       SMA50: active.has("SMA50") ? sma(candles, 50) : null,
       SMA200: active.has("SMA200") ? sma(candles, 200) : null,
+      EMA9: active.has("EMA9") ? ema(candles, 9) : null,
       EMA20: active.has("EMA20") ? ema(candles, 20) : null,
       VWAP: active.has("VWAP") ? vwap(candles) : null,
       RSI: active.has("RSI") ? rsi(candles) : null,
@@ -131,6 +132,7 @@ export default function ChartWidget({ widget }: { widget: WidgetInstance }) {
     if (indicatorData.SMA20) maps.SMA20 = toMap(indicatorData.SMA20);
     if (indicatorData.SMA50) maps.SMA50 = toMap(indicatorData.SMA50);
     if (indicatorData.SMA200) maps.SMA200 = toMap(indicatorData.SMA200);
+    if (indicatorData.EMA9) maps.EMA9 = toMap(indicatorData.EMA9);
     if (indicatorData.EMA20) maps.EMA20 = toMap(indicatorData.EMA20);
     if (indicatorData.VWAP) maps.VWAP = toMap(indicatorData.VWAP);
     if (indicatorData.RSI) maps.RSI = toMap(indicatorData.RSI);
@@ -152,7 +154,7 @@ export default function ChartWidget({ widget }: { widget: WidgetInstance }) {
     const t = legend.time;
     const get = (key: string) => indicatorMaps[key]?.get(t);
     const rows: Array<{ label: string; value: string; color: string }> = [];
-    for (const key of ["SMA20", "SMA50", "SMA200", "EMA20", "VWAP"] as const) {
+    for (const key of ["SMA20", "SMA50", "SMA200", "EMA9", "EMA20", "VWAP"] as const) {
       const v = get(key);
       if (v !== undefined) rows.push({ label: key, value: fmt(v), color: INDICATOR_COLOR[key] });
     }
@@ -234,6 +236,7 @@ export default function ChartWidget({ widget }: { widget: WidgetInstance }) {
     if (indicatorData?.SMA20) overlay(indicatorData.SMA20, INDICATOR_COLOR.SMA20);
     if (indicatorData?.SMA50) overlay(indicatorData.SMA50, INDICATOR_COLOR.SMA50);
     if (indicatorData?.SMA200) overlay(indicatorData.SMA200, INDICATOR_COLOR.SMA200);
+    if (indicatorData?.EMA9) overlay(indicatorData.EMA9, INDICATOR_COLOR.EMA9);
     if (indicatorData?.EMA20) overlay(indicatorData.EMA20, INDICATOR_COLOR.EMA20);
     if (indicatorData?.VWAP) overlay(indicatorData.VWAP, INDICATOR_COLOR.VWAP);
     if (indicatorData?.BOLL) {
