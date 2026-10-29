@@ -16,6 +16,7 @@ export default function Terminal() {
   useEffect(() => {
     document.documentElement.classList.toggle("lang-he", lang === "he");
     document.documentElement.lang = lang;
+    document.documentElement.dir = lang === "he" ? "rtl" : "ltr";
   }, [lang]);
 
   useEffect(() => {
